@@ -1,0 +1,24 @@
+[project]
+name = "poe2rag"
+version = "0.1.0"
+description = "RAG over the Path of Exile 2 wiki + poe2db, answered by Gemini via ninerouter"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "model2vec>=0.9.0",
+    "mwparserfromhell>=0.7.2",
+    "selectolax>=0.4.11",
+    "sqlite-vec>=0.1.9",
+    "tenacity>=9.1.4",
+    "tqdm>=4.70.0",
+]
+
+[dependency-groups]
+server = [
+    "fastapi>=0.118",
+    "uvicorn[standard]>=0.34",
+]
+
+[tool.uv]
+package = false
