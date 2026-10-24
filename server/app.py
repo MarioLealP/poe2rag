@@ -1,12 +1,14 @@
-"""poe2rag backend — hybrid retrieval + a Gemini answer streamed over SSE
+"""poe2rag backend — hybrid retrieval + an LLM answer streamed over SSE
 (/api/ask), and retrieval alone (/api/search, for Felt).
 
 Env:
   POE2_DB           path to poe2.db            (default ./data/poe2.db)
   EMBED_MODEL       model2vec model name       (default minishlab/potion-retrieval-32M)
-  LLM_BASE_URL      OpenAI-compatible endpoint (default http://ninerouter:20128/v1)
-  LLM_API_KEY       key for that endpoint
-  LLM_MODEL         model id                   (default ag/gemini-3.8-flash)
+  LLM_BASE_URL      OpenAI-compatible endpoint (default http://felt-llm:8080/v1)
+  LLM_API_KEY       key for that endpoint      (default none)
+  LLM_MODEL         model id                   (default felt)
+  LLM_TIMEOUT       seconds to wait for the LLM (default 600: felt-llm has one slot,
+                    so a question can queue behind Felt's long prompts)
 """
 
 from __future__ import annotations
@@ -26,9 +28,10 @@ from .retrieve import Hit, connect, search
 
 DB = os.getenv("POE2_DB", "data/poe2.db")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "minishlab/potion-retrieval-32M")
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://ninerouter:20128/v1")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://felt-llm:8080/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "ag/gemini-3.8-flash")
+LLM_MODEL = os.getenv("LLM_MODEL", "felt")
+LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "600"))
 TOP_K = int(os.getenv("TOP_K", "6"))
 
 SYSTEM = (
@@ -58,7 +61,7 @@ async def lifespan(_: FastAPI):
 
     state["db"] = connect(DB)
     state["embed"] = StaticModel.from_pretrained(EMBED_MODEL)
-    state["http"] = httpx.AsyncClient(timeout=120)
+    state["http"] = httpx.AsyncClient(timeout=httpx.Timeout(LLM_TIMEOUT, connect=10))
     yield
     await state["http"].aclose()
     state["db"].close()
